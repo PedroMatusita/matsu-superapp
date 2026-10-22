@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
+import './modules/notes/screens/list_note.dart';
 
-void main() => runApp(const MeuApp());
+void main() {
+  runApp(const NoteApp());
+}
 
-class MeuApp extends StatelessWidget {
-  const MeuApp({super.key});
+class NoteApp extends StatelessWidget {
+  const NoteApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(body: Center(child: Text('Hello World'))),
+    return MaterialApp(
+      title: 'App de Notas',
+      theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
+      home: const ListNotes(),
     );
   }
 }
