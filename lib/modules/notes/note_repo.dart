@@ -1,30 +1,53 @@
 import 'note.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NotesRepository {
-  final List<Note> _notes = [];
+  static const String _notesKey = 'notes_key';
 
-  List<Note> getNotes() {
-    return List.unmodifiable(_notes);
+Future<List<Note>> getNotes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? notesString = prefs.getString(_notesKey);
+    
+    if (notesString == null) return [];
+
+    List<dynamic> decodedList = jsonDecode(notesString);
+    return decodedList.map((item) => Note.fromJson(item)).toList();
   }
 
-  void addNote({required String title, required String content}) {
+  Future<void> _saveToStorage(List<Note> notes) async {
+    final prefs = await SharedPreferences.getInstance();
+    String encodedList = jsonEncode(notes.map((note) => note.toJson()).toList());
+    await prefs.setString(_notesKey, encodedList);
+  }
+
+  Future<void> addNote({required String title, required String content}) async {
+    final currentNotes = await getNotes();
+    
     final newNote = Note(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: title,
       content: content,
       editedAt: DateTime.now(),
     );
-    _notes.add(newNote);
+
+    currentNotes.add(newNote);
+    await _saveToStorage(currentNotes);
   }
 
-  void updateNote(Note updatedNote) {
-    final index = _notes.indexWhere((note) => note.id == updatedNote.id);
+  Future<void> updateNote(Note updatedNote) async {
+    final currentNotes = await getNotes();
+    final index = currentNotes.indexWhere((note) => note.id == updatedNote.id);
+    
     if (index != -1) {
-      _notes[index] = updatedNote;
+      currentNotes[index] = updatedNote;
+      await _saveToStorage(currentNotes);
     }
   }
 
-  void deleteNote(String id) {
-    _notes.removeWhere((note) => note.id == id);
+  Future<void> deleteNote(String id) async {
+    final currentNotes = await getNotes();
+    currentNotes.removeWhere((note) => note.id == id);
+    await _saveToStorage(currentNotes);
   }
 }

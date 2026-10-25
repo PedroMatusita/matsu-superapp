@@ -23,7 +23,6 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
   @override
   void initState() {
     super.initState();
-    // Check if we are in edit mode or create mode
     _titleController = TextEditingController(text: widget.noteToEdit?.title ?? '');
     _contentController = TextEditingController(text: widget.noteToEdit?.content ?? '');
   }
@@ -39,16 +38,19 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
 
-    if (title.isEmpty || content.isEmpty) return;
+    if (title.isEmpty && content.isEmpty) {
+      Navigator.pop(context);
+      return;
+    }
 
     if (widget.noteToEdit == null) {
       widget.notesRepository.addNote(
-        title: title,
+        title: title.isEmpty ? 'Nota sem título' : title,
         content: content,
       );
     } else {
       final updatedNote = widget.noteToEdit!.copyWith(
-        title: title,
+        title: title.isEmpty ? 'Nota sem título' : title,
         content: content,
       );
       widget.notesRepository.updateNote(updatedNote);
@@ -59,30 +61,62 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isEditing = widget.noteToEdit != null;
-
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(isEditing ? 'Editar Nota' : 'Nova Nota'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.amber),
+        actions: [
+          TextButton(
+            onPressed: _save,
+            child: const Text(
+              'Pronto',
+              style: TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 20.0),
         child: Column(
           children: [
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Título'),
+              maxLines: null,
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+              decoration: const InputDecoration(
+                hintText: 'Título',
+                hintStyle: TextStyle(color: Colors.black26),
+                // border: InputBorder.none(),
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+              ),
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _contentController,
-              decoration: const InputDecoration(labelText: 'Conteúdo'),
-              maxLines: 5,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _save,
-              child: Text(isEditing ? 'Salvar Alterações' : 'Criar Nota'),
+            
+            Expanded(
+              child: TextField(
+                controller: _contentController,
+                maxLines: null, 
+                expands: true,
+                textAlignVertical: TextAlignVertical.top,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.black54,
+                ),
+                decoration: const InputDecoration(
+                  hintText: 'Comece a digitar...',
+                  hintStyle: TextStyle(color: Colors.black26),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                ),
+              ),
             ),
           ],
         ),

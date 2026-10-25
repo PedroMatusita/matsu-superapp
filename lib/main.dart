@@ -13,7 +13,7 @@ class NoteApp extends StatelessWidget {
     return MaterialApp(
       title: 'App de Notas',
       theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
-      home: const ListNotes(),
+      home: const ListNotesScreen(),
     );
   }
 }

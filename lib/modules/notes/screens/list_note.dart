@@ -1,18 +1,19 @@
-  import 'package:flutter/material.dart';
-  import '../note.dart';
-  import '../note_repo.dart';
-  import 'edit_note.dart';
+import 'package:flutter/material.dart';
+import '../note.dart';
+import '../note_repo.dart';
+import 'edit_note.dart';
 
-  class ListNotes extends StatefulWidget {
-  const ListNotes({super.key});
+class ListNotesScreen extends StatefulWidget {
+  const ListNotesScreen({super.key});
 
   @override
-  State<ListNotes> createState() => _ListNotesState();
+  State<ListNotesScreen> createState() => _ListNotesScreenState();
 }
 
-  class _ListNotesState extends State<ListNotes> {
-  List<Note> _notes = [];
+class _ListNotesScreenState extends State<ListNotesScreen> {
   final NotesRepository _notesRepository = NotesRepository();
+  List<Note> _notes = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -20,13 +21,19 @@
     _loadNotes();
   }
 
-  void _loadNotes() {
+  Future<void> _loadNotes() async {
     setState(() {
-      _notes = _notesRepository.getNotes();
+      _isLoading = true;
+    });
+
+    final notesFromRepo = await _notesRepository.getNotes();
+
+    setState(() {
+      _notes = notesFromRepo;
+      _isLoading = false;
     });
   }
 
-  // Change screens
   void _openAddEditScreen({Note? noteToEdit}) async {
     await Navigator.push(
       context,
@@ -41,35 +48,58 @@
     _loadNotes();
   }
 
-  void _deleteNote(String id) {
-    _notesRepository.deleteNote(id);
+  void _deleteNote(String id) async {
+    await _notesRepository.deleteNote(id);
     _loadNotes();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Minhas Notas')),
-      body: _notes.isEmpty
-          ? const Center(child: Text('Nenhuma nota encontrada.'))
-          : ListView.builder(
-              itemCount: _notes.length,
-              itemBuilder: (context, index) {
-                final currentNote = _notes[index];
-                return ListTile(
-                  title: Text(currentNote.title),
-                  subtitle: Text(currentNote.content),
-                  onTap: () => _openAddEditScreen(noteToEdit: currentNote),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _deleteNote(currentNote.id),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text(
+          'Notas',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _notes.isEmpty
+              ? const Center(
+                  child: Text(
+                    'Nenhuma nota encontrada.',
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
                   ),
-                );
-              },
-            ),
+                )
+              : ListView.builder(
+                  itemCount: _notes.length,
+                  itemBuilder: (context, index) {
+                    final note = _notes[index];
+                    return ListTile(
+                      title: Text(
+                        note.title,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        note.content,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () => _openAddEditScreen(noteToEdit: note),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                        onPressed: () => _deleteNote(note.id),
+                      ),
+                    );
+                  },
+                ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.amber,
         onPressed: () => _openAddEditScreen(),
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
