@@ -21,9 +21,9 @@ Future<List<Note>> getNotes() async {
     await prefs.setString(_notesKey, encodedList);
   }
 
-  Future<void> addNote({required String title, required String content}) async {
+  Future<Note> addNote({required String title, required String content}) async {
     final currentNotes = await getNotes();
-    
+
     final newNote = Note(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: title,
@@ -33,6 +33,7 @@ Future<List<Note>> getNotes() async {
 
     currentNotes.add(newNote);
     await _saveToStorage(currentNotes);
+    return newNote;
   }
 
   Future<void> updateNote(Note updatedNote) async {

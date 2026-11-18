@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../note.dart';
 import '../note_repo.dart';
 import 'edit_note.dart';
@@ -26,12 +27,19 @@ class _ListNotesScreenState extends State<ListNotesScreen> {
       _isLoading = true;
     });
 
-    final notesFromRepo = await _notesRepository.getNotes();
+    try {
+      final notesFromRepo = await _notesRepository.getNotes();
 
-    setState(() {
-      _notes = notesFromRepo;
-      _isLoading = false;
-    });
+      setState(() {
+        _notes = notesFromRepo;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('ERRO AO CARREGAR NOTAS: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   void _openAddEditScreen({Note? noteToEdit}) async {
@@ -68,34 +76,37 @@ class _ListNotesScreenState extends State<ListNotesScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _notes.isEmpty
-              ? const Center(
-                  child: Text(
-                    'Nenhuma nota encontrada.',
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
+          ? const Center(
+              child: Text(
+                'Nenhuma nota encontrada.',
+                style: TextStyle(color: Colors.grey, fontSize: 16),
+              ),
+            )
+          : ListView.builder(
+              itemCount: _notes.length,
+              itemBuilder: (context, index) {
+                final note = _notes[index];
+                return ListTile(
+                  title: Text(
+                    note.title,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                )
-              : ListView.builder(
-                  itemCount: _notes.length,
-                  itemBuilder: (context, index) {
-                    final note = _notes[index];
-                    return ListTile(
-                      title: Text(
-                        note.title,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                        note.content,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      onTap: () => _openAddEditScreen(noteToEdit: note),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                        onPressed: () => _deleteNote(note.id),
-                      ),
-                    );
-                  },
-                ),
+                  subtitle: Text(
+                    note.content,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () => _openAddEditScreen(noteToEdit: note),
+                  trailing: IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.redAccent,
+                    ),
+                    onPressed: () => _deleteNote(note.id),
+                  ),
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.amber,
         onPressed: () => _openAddEditScreen(),
