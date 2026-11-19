@@ -20,7 +20,8 @@ class AddEditNoteScreen extends StatefulWidget {
 class _AddEditNoteScreenState extends State<AddEditNoteScreen>
     with WidgetsBindingObserver {
   late final TextEditingController _titleController;
-  late final TextEditingController _contentController;
+  final List<NoteBlock> _blocks = [];
+  final List<TextEditingController> _blockControllers = [];
   Note? _workingNote;
   bool _allowPop = false;
 
@@ -28,12 +29,13 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _workingNote = widget.noteToEdit;
     _titleController = TextEditingController(
       text: widget.noteToEdit?.title ?? '',
     );
-    _contentController = TextEditingController(
-      text: widget.noteToEdit?.content ?? '',
+    _workingNote = widget.noteToEdit;
+    _blocks.addAll(widget.noteToEdit?.blocks ?? []);
+    _blockControllers.addAll(
+      _blocks.map((block) => TextEditingController(text: _blockText(block))),
     );
   }
 
@@ -41,8 +43,53 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _titleController.dispose();
-    _contentController.dispose();
+    for (final controller in _blockControllers) {
+      controller.dispose();
+    }
     super.dispose();
+  }
+
+  String _blockText(NoteBlock block) {
+    if (block is ChecklistBlock) return block.text;
+    return (block as TextBlock).text;
+  }
+
+  void _addTextBlock() {
+    setState(() {
+      _blocks.add(const TextBlock(text: ''));
+      _blockControllers.add(TextEditingController());
+    });
+  }
+
+  void _addChecklistBlock() {
+    setState(() {
+      _blocks.add(const ChecklistBlock(text: ''));
+      _blockControllers.add(TextEditingController());
+    });
+  }
+
+  void _removeBlock(int index) {
+    final controller = _blockControllers.removeAt(index);
+    controller.dispose();
+    setState(() => _blocks.removeAt(index));
+  }
+
+  List<NoteBlock> _currentBlocks() {
+    return List.generate(_blocks.length, (index) {
+      final block = _blocks[index];
+      final text = _blockControllers[index].text;
+      if (block is ChecklistBlock) {
+        return ChecklistBlock(text: text, isChecked: block.isChecked);
+      }
+      return TextBlock(text: text);
+    });
+  }
+
+  void _toggleChecklist(int index, bool value) {
+    final block = _blocks[index] as ChecklistBlock;
+    setState(() {
+      _blocks[index] = block.copyWith(isChecked: value);
+    });
   }
 
   @override
@@ -55,24 +102,23 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen>
 
   Future<void> _persistCurrentNote() async {
     final title = _titleController.text.trim();
-    final content = _contentController.text.trim();
+    final blocks = _currentBlocks();
+    final hasContent =
+        title.isNotEmpty ||
+        blocks.any((block) => _blockText(block).trim().isNotEmpty);
 
-    if (title.isEmpty && content.isEmpty) return;
+    if (!hasContent) return;
 
     final finalTitle = title.isEmpty ? 'Nota sem título' : title;
-
     if (_workingNote == null) {
       _workingNote = await widget.notesRepository.addNote(
         title: finalTitle,
-        content: content,
+        content: '',
+        blocks: blocks,
       );
     } else {
-      final updatedNote = _workingNote!.copyWith(
-        title: finalTitle,
-        content: content,
-      );
-      await widget.notesRepository.updateNote(updatedNote);
-      _workingNote = updatedNote;
+      _workingNote = _workingNote!.copyWith(title: finalTitle, blocks: blocks);
+      await widget.notesRepository.updateNote(_workingNote!);
     }
   }
 
@@ -116,48 +162,113 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen>
             ),
           ],
         ),
-        body: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          child: Column(
-            children: [
-              TextField(
-                controller: _titleController,
-                maxLines: null,
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-                decoration: const InputDecoration(
-                  hintText: 'Título',
-                  hintStyle: TextStyle(color: Colors.black26),
-                  // border: InputBorder.none(),
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                ),
+        body: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          children: [
+            TextField(
+              controller: _titleController,
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
-              const SizedBox(height: 16),
-
-              Expanded(
-                child: TextField(
-                  controller: _contentController,
-                  maxLines: null,
-                  expands: true,
-                  textAlignVertical: TextAlignVertical.top,
-                  style: const TextStyle(fontSize: 16, color: Colors.black54),
-                  decoration: const InputDecoration(
-                    hintText: 'Comece a digitar...',
-                    hintStyle: TextStyle(color: Colors.black26),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                  ),
-                ),
+              decoration: const InputDecoration(
+                hintText: 'Título',
+                hintStyle: TextStyle(color: Colors.black26),
+                border: InputBorder.none,
               ),
-            ],
+            ),
+            const SizedBox(height: 8),
+            ...List.generate(_blocks.length, _buildBlock),
+            const SizedBox(height: 80),
+          ],
+        ),
+        bottomNavigationBar: SafeArea(
+          child: Container(
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: Colors.black12)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  tooltip: 'Adicionar texto',
+                  onPressed: _addTextBlock,
+                  icon: const Icon(Icons.text_fields),
+                ),
+                IconButton(
+                  tooltip: 'Adicionar checklist',
+                  onPressed: _addChecklistBlock,
+                  icon: const Icon(Icons.check_box_outlined),
+                ),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildBlock(int index) {
+    final block = _blocks[index];
+    if (block is ChecklistBlock) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Checkbox(
+            value: block.isChecked,
+            activeColor: Colors.amber,
+            onChanged: (value) => _toggleChecklist(index, value ?? false),
+          ),
+          Expanded(
+            child: TextField(
+              controller: _blockControllers[index],
+              minLines: 1,
+              maxLines: null,
+              textInputAction: TextInputAction.next,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.black54,
+                decoration: block.isChecked
+                    ? TextDecoration.lineThrough
+                    : TextDecoration.none,
+              ),
+              decoration: const InputDecoration(
+                hintText: 'Item da checklist',
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Remover item',
+            onPressed: () => _removeBlock(index),
+            icon: const Icon(Icons.close, color: Colors.black38),
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _blockControllers[index],
+            minLines: 1,
+            maxLines: null,
+            style: const TextStyle(fontSize: 16, color: Colors.black54),
+            decoration: const InputDecoration(
+              hintText: 'Comece a digitar...',
+              border: InputBorder.none,
+            ),
+          ),
+        ),
+        IconButton(
+          tooltip: 'Remover texto',
+          onPressed: () => _removeBlock(index),
+          icon: const Icon(Icons.close, color: Colors.black38),
+        ),
+      ],
     );
   }
 }

@@ -2,6 +2,12 @@
 
 A new Flutter project.
 
+## Features
+
+- Create and edit notes with plain text.
+- Add checklist items inside a note from the editor toolbar.
+- Mark checklist items complete or incomplete and save them locally.
+
 ## Create and publish a new APK
 
 The GitHub Actions workflow in `.github/workflows/build.yml` automatically builds and signs a release APK whenever a tag matching `v*` is pushed to `origin`.

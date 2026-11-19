@@ -92,7 +92,7 @@ class _ListNotesScreenState extends State<ListNotesScreen> {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
-                    note.content,
+                    _notePreview(note),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -113,5 +113,16 @@ class _ListNotesScreenState extends State<ListNotesScreen> {
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
+  }
+
+  String _notePreview(Note note) {
+    final checklistItems = note.blocks
+        .whereType<ChecklistBlock>()
+        .map((block) => '${block.isChecked ? '[x]' : '[ ]'} ${block.text}')
+        .join('\n');
+    return [
+      note.content,
+      checklistItems,
+    ].where((text) => text.isNotEmpty).join('\n');
   }
 }
